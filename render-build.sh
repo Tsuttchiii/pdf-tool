@@ -1,3 +1,2 @@
 #!/bin/bash
-apt-get update
-apt-get install -y libreoffice
+echo "LibreOffice is pre-installed on Render"
