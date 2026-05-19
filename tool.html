@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF ツール</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial;
+        margin: 32px;
+        background: #f5f5f5;
+      }
+      h1 {
+        margin-bottom: 24px;
+      }
+      h2 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+      }
+      .card {
+        max-width: 720px;
+        padding: 20px;
+        border: 1px solid #e1e1e1;
+        border-radius: 8px;
+        background: #fff;
+        margin-bottom: 24px;
+      }
+      input[type="file"] {
+        display: block;
+        margin-bottom: 12px;
+      }
+      button {
+        padding: 8px 12px;
+        font-size: 15px;
+        cursor: pointer;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #fff;
+      }
+      button:hover {
+        background: #f0f0f0;
+      }
+      button.primary {
+        background: #1a1a1a;
+        color: #fff;
+        border-color: #1a1a1a;
+      }
+      button.primary:hover {
+        background: #333;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .status {
+        margin-top: 12px;
+        color: #444;
+        min-height: 20px;
+      }
+      .status.error {
+        color: #c00;
+      }
+      .status.success {
+        color: #080;
+      }
+      .drop-zone {
+        margin-top: 12px;
+        padding: 18px;
+        border: 2px dashed #bbb;
+        border-radius: 8px;
+        text-align: center;
+        color: #666;
+        cursor: pointer;
+      }
+      .drop-zone.dragover {
+        border-color: #444;
+        color: #222;
+        background: #f7f7f7;
+      }
+      .file-list {
+        margin-top: 12px;
+      }
+      .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        margin-top: 8px;
+        background: #fafafa;
+        cursor: grab;
+      }
+      .file-item.dragging {
+        opacity: 0.5;
+      }
+      .file-name {
+        flex: 1;
+        margin-right: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .file-actions button {
+        margin-left: 8px;
+      }
+      .section {
+        margin-top: 16px;
+        padding: 12px;
+        border: 1px solid #e1e1e1;
+        border-radius: 8px;
+        background: #fafafa;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .word-drop-zone {
+        margin-top: 12px;
+        padding: 32px 18px;
+        border: 2px dashed #bbb;
+        border-radius: 8px;
+        text-align: center;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .word-drop-zone.dragover {
+        border-color: #1a1a1a;
+        background: #f0f0f0;
+        color: #222;
+      }
+      .word-drop-zone.has-file {
+        border-color: #080;
+        background: #f0fff0;
+        color: #080;
+      }
+      .progress-bar {
+        height: 6px;
+        background: #eee;
+        border-radius: 3px;
+        margin-top: 10px;
+        overflow: hidden;
+      }
+      .progress-bar-inner {
+        height: 100%;
+        background: #1a1a1a;
+        width: 0;
+        transition: width 0.3s;
+        border-radius: 3px;
+      }
+      .server-status {
+        font-size: 13px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        background: #fff3cd;
+        color: #856404;
+        display: inline-block;
+        margin-bottom: 12px;
+      }
+      .server-status.ok {
+        background: #d1e7dd;
+        color: #0a3622;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+  </head>
+  <body>
+    <h1>PDF ツール</h1>
+
+    <!-- ===== PDF 結合 ===== -->
+    <div class="card">
+      <h2>🔗 PDF 結合</h2>
+      <label
+        >結合したいPDFを複数選択してください（順序はファイル選択順になります）</label
+      >
+      <input id="files" type="file" accept="application/pdf" multiple />
+      <div id="dropZone" class="drop-zone">ここにPDFをドロップして追加</div>
+      <div id="fileList" class="file-list"></div>
+      <div style="margin-top: 12px">
+        <button id="mergeBtn">結合してダウンロード</button>
+        <button id="clearBtn">選択をクリア</button>
+      </div>
+      <div style="margin-top: 8px">
+        <label
+          ><input id="appendA4" type="checkbox" /> 結合ファイルの末尾に A4
+          白紙ページを追加する</label
+        >
+      </div>
+      <div style="margin-top: 6px">
+        <label
+          >追加ページ数:
+          <input
+            id="appendA4Count"
+            type="number"
+            min="1"
+            value="1"
+            style="width: 72px; margin-left: 8px"
+        /></label>
+      </div>
+
+      <!-- ページ範囲抽出 -->
+      <div class="section">
+        <h2>PDF ページ範囲抽出</h2>
+        <div style="margin-bottom: 8px">
+          <label for="extractFile">抽出元PDF:</label>
+          <select
+            id="extractFile"
+            style="width: 100%; margin-top: 6px; padding: 6px"
+          ></select>
+        </div>
+        <div class="row">
+          <label
+            >開始ページ:<input
+              id="extractStartPage"
+              type="number"
+              min="1"
+              value="1"
+              style="width: 80px; margin-left: 6px"
+          /></label>
+          <label
+            >終了ページ:<input
+              id="extractEndPage"
+              type="number"
+              min="1"
+              value="1"
+              style="width: 80px; margin-left: 6px"
+          /></label>
+          <button id="extractBtn">抽出してダウンロード</button>
+        </div>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <!-- ===== Word → PDF 変換 ===== -->
+    <div class="card">
+      <h2>📄 Word → PDF 変換</h2>
+      <div id="wordDropZone" class="word-drop-zone">
+        <div id="wordDropLabel">
+          ここに .docx ファイルをドロップ<br /><small
+            >またはクリックして選択</small
+          >
+        </div>
+      </div>
+      <input
+        id="wordInput"
+        type="file"
+        accept=".docx,.doc"
+        style="display: none"
+      />
+      <div class="progress-bar" id="wordProgress" style="display: none">
+        <div class="progress-bar-inner" id="wordProgressInner"></div>
+      </div>
+      <div style="margin-top: 12px">
+        <button class="primary" id="convertBtn" disabled>
+          PDFに変換してダウンロード
+        </button>
+      </div>
+      <div class="status" id="wordStatus"></div>
+    </div>
+
+    <script>
+      // ローカルで開いている場合はlocalhost、ネット上のサーバーで開いている場合は同じオリジンを使う
+      const SERVER =
+        location.hostname === "localhost" || location.hostname === "127.0.0.1"
+          ? "http://localhost:8765"
+          : location.origin;
+
+      // ===== Word → PDF =====
+      const wordDropZone = document.getElementById("wordDropZone");
+      const wordDropLabel = document.getElementById("wordDropLabel");
+      const wordInput = document.getElementById("wordInput");
+      const convertBtn = document.getElementById("convertBtn");
+      const wordStatus = document.getElementById("wordStatus");
+      const wordProgress = document.getElementById("wordProgress");
+      const wordProgressInner = document.getElementById("wordProgressInner");
+      let selectedWordFile = null;
+
+      wordDropZone.addEventListener("click", () => wordInput.click());
+      wordDropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        wordDropZone.classList.add("dragover");
+      });
+      wordDropZone.addEventListener("dragleave", () =>
+        wordDropZone.classList.remove("dragover"),
+      );
+      wordDropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        wordDropZone.classList.remove("dragover");
+        const f = e.dataTransfer.files[0];
+        if (f) setWordFile(f);
+      });
+      wordInput.addEventListener("change", () => {
+        if (wordInput.files[0]) setWordFile(wordInput.files[0]);
+        wordInput.value = "";
+      });
+
+      function setWordFile(file) {
+        if (!file.name.match(/\.(docx|doc)$/i)) {
+          setWordStatus(
+            "error",
+            ".docx または .doc ファイルを選択してください",
+          );
+          return;
+        }
+        selectedWordFile = file;
+        wordDropLabel.innerHTML = `📄 ${file.name}<br><small>${(file.size / 1024).toFixed(1)} KB</small>`;
+        wordDropZone.className = "word-drop-zone has-file";
+        convertBtn.disabled = false;
+        setWordStatus("", "");
+      }
+
+      function setWordStatus(type, msg) {
+        wordStatus.textContent = msg;
+        wordStatus.className = "status" + (type ? " " + type : "");
+      }
+
+      convertBtn.addEventListener("click", async () => {
+        if (!selectedWordFile) return;
+        convertBtn.disabled = true;
+        wordProgress.style.display = "block";
+        wordProgressInner.style.width = "30%";
+        setWordStatus("", "変換中...");
+
+        const formData = new FormData();
+        formData.append("file", selectedWordFile, selectedWordFile.name);
+
+        try {
+          wordProgressInner.style.width = "60%";
+          const res = await fetch(SERVER + "/convert", {
+            method: "POST",
+            body: formData,
+          });
+          wordProgressInner.style.width = "90%";
+
+          if (!res.ok) {
+            const err = await res
+              .json()
+              .catch(() => ({ error: "不明なエラー" }));
+            throw new Error(err.error || "変換に失敗しました");
+          }
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          const outName = selectedWordFile.name.replace(
+            /\.(docx|doc)$/i,
+            ".pdf",
+          );
+          a.download = outName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+
+          wordProgressInner.style.width = "100%";
+          setWordStatus(
+            "success",
+            `✅ 変換完了！ ${outName} をダウンロードしました`,
+          );
+        } catch (err) {
+          setWordStatus("error", "エラー: " + err.message);
+        } finally {
+          convertBtn.disabled = false;
+          setTimeout(() => {
+            wordProgress.style.display = "none";
+            wordProgressInner.style.width = "0";
+          }, 1000);
+        }
+      });
+
+      // ===== PDF 結合 =====
+      const input = document.getElementById("files");
+      const dropZone = document.getElementById("dropZone");
+      const fileListEl = document.getElementById("fileList");
+      const mergeBtn = document.getElementById("mergeBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const appendA4 = document.getElementById("appendA4");
+      const appendA4Count = document.getElementById("appendA4Count");
+      const status = document.getElementById("status");
+
+      let selectedFiles = [];
+      let dragSrcIndex = null;
+
+      function setStatus(text) {
+        status.textContent = text;
+      }
+
+      function renderFileList() {
+        fileListEl.innerHTML = "";
+        if (selectedFiles.length === 0) {
+          fileListEl.textContent =
+            "まだPDFがありません。ファイルを選択するか、ここにドロップしてください。";
+          updateExtractFileOptions();
+          return;
+        }
+        selectedFiles.forEach((file, index) => {
+          const item = document.createElement("div");
+          item.className = "file-item";
+          item.draggable = true;
+          item.dataset.index = index;
+
+          const name = document.createElement("div");
+          name.className = "file-name";
+          name.textContent = `${index + 1}. ${file.name}`;
+
+          const actions = document.createElement("div");
+          actions.className = "file-actions";
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.textContent = "削除";
+          removeBtn.addEventListener("click", () => {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+          });
+          actions.appendChild(removeBtn);
+
+          item.appendChild(name);
+          item.appendChild(actions);
+
+          item.addEventListener("dragstart", (e) => {
+            dragSrcIndex = index;
+            item.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+          });
+          item.addEventListener("dragend", () => {
+            item.classList.remove("dragging");
+            dragSrcIndex = null;
+          });
+          item.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            item.classList.add("dragover");
+          });
+          item.addEventListener("dragleave", () =>
+            item.classList.remove("dragover"),
+          );
+          item.addEventListener("drop", (e) => {
+            e.preventDefault();
+            item.classList.remove("dragover");
+            const destIndex = Number(item.dataset.index);
+            if (dragSrcIndex === null || dragSrcIndex === destIndex) return;
+            const [moved] = selectedFiles.splice(dragSrcIndex, 1);
+            selectedFiles.splice(destIndex, 0, moved);
+            renderFileList();
+          });
+
+          fileListEl.appendChild(item);
+        });
+        updateExtractFileOptions();
+      }
+
+      function addFiles(files) {
+        const arr = Array.from(files).filter(
+          (f) =>
+            f.type === "application/pdf" ||
+            f.name.toLowerCase().endsWith(".pdf"),
+        );
+        if (!arr.length) return;
+        selectedFiles.push(...arr);
+        renderFileList();
+        setStatus(`${selectedFiles.length} 件のPDFを選択中`);
+      }
+
+      input.addEventListener("change", () => {
+        addFiles(input.files);
+        input.value = "";
+      });
+      dropZone.addEventListener("click", () => input.click());
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+      dropZone.addEventListener("dragleave", () =>
+        dropZone.classList.remove("dragover"),
+      );
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
+      });
+
+      async function createMergedPDF(fileList) {
+        if (!fileList || !fileList.length)
+          throw new Error("ファイルが選択されていません");
+        setStatus("結合を開始しています...");
+        const mergedPdf = await PDFLib.PDFDocument.create();
+        for (const file of Array.from(fileList)) {
+          setStatus(`読み込み中: ${file.name}`);
+          const ab = await file.arrayBuffer();
+          const src = await PDFLib.PDFDocument.load(ab);
+          const copied = await mergedPdf.copyPages(src, src.getPageIndices());
+          copied.forEach((p) => mergedPdf.addPage(p));
+        }
+        if (appendA4.checked) {
+          let count = Math.max(1, parseInt(appendA4Count.value, 10) || 1);
+          for (let i = 0; i < count; i++) mergedPdf.addPage([595.28, 841.89]);
+        }
+        setStatus("保存中...");
+        return mergedPdf.save();
+      }
+
+      async function mergePDFs(fileList) {
+        mergeBtn.disabled = true;
+        try {
+          const bytes = await createMergedPDF(fileList);
+          const url = URL.createObjectURL(
+            new Blob([bytes], { type: "application/pdf" }),
+          );
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "merged.pdf";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          setStatus("結合が完了しました。ダウンロードを開始しました。");
+        } catch (err) {
+          setStatus("エラー: " + (err.message || err));
+        } finally {
+          mergeBtn.disabled = false;
+        }
+      }
+
+      mergeBtn.addEventListener("click", () => {
+        if (!selectedFiles.length) {
+          setStatus("ファイルを選択してください");
+          return;
+        }
+        mergePDFs(selectedFiles);
+      });
+      clearBtn.addEventListener("click", () => {
+        selectedFiles = [];
+        input.value = "";
+        renderFileList();
+        setStatus("選択をクリアしました");
+      });
+
+      async function createExtractedPDF(file, startPage, endPage) {
+        setStatus(`抽出中: ${file.name} の ${startPage}〜${endPage} ページ`);
+        const ab = await file.arrayBuffer();
+        const src = await PDFLib.PDFDocument.load(ab);
+        const pageCount = src.getPageCount();
+        if (
+          startPage < 1 ||
+          endPage < 1 ||
+          startPage > pageCount ||
+          endPage > pageCount
+        )
+          throw new Error(
+            `ページ番号は1〜${pageCount}の範囲で指定してください`,
+          );
+        if (startPage > endPage)
+          throw new Error("開始ページは終了ページ以下にしてください");
+        const indices = [];
+        for (let i = startPage - 1; i <= endPage - 1; i++) indices.push(i);
+        const out = await PDFLib.PDFDocument.create();
+        const copied = await out.copyPages(src, indices);
+        copied.forEach((p) => out.addPage(p));
+        setStatus("保存中...");
+        return out.save();
+      }
+
+      function updateExtractFileOptions() {
+        const select = document.getElementById("extractFile");
+        if (!select) return;
+        select.innerHTML = "";
+        selectedFiles.forEach((f, i) => {
+          const opt = document.createElement("option");
+          opt.value = String(i);
+          opt.textContent = `${i + 1}. ${f.name}`;
+          select.appendChild(opt);
+        });
+      }
+
+      document
+        .getElementById("extractBtn")
+        .addEventListener("click", async () => {
+          if (!selectedFiles.length) {
+            setStatus("抽出したいPDFを選択してください");
+            return;
+          }
+          const sel = document.getElementById("extractFile");
+          const fileIndex = sel ? Number(sel.value) : 0;
+          const start = parseInt(
+            document.getElementById("extractStartPage").value,
+            10,
+          );
+          const end = parseInt(
+            document.getElementById("extractEndPage").value,
+            10,
+          );
+          if (isNaN(start) || isNaN(end) || start < 1 || end < 1) {
+            setStatus("正しいページ範囲を入力してください");
+            return;
+          }
+          document.getElementById("extractBtn").disabled = true;
+          try {
+            const bytes = await createExtractedPDF(
+              selectedFiles[fileIndex],
+              start,
+              end,
+            );
+            const url = URL.createObjectURL(
+              new Blob([bytes], { type: "application/pdf" }),
+            );
+            const a = document.createElement("a");
+            a.href = url;
+            const safeName = selectedFiles[fileIndex].name.replace(
+              /\.pdf$/i,
+              "",
+            );
+            a.download = `${safeName}-pages${start}-${end}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            setStatus("抽出が完了しました。");
+          } catch (err) {
+            setStatus("エラー: " + (err.message || err));
+          } finally {
+            document.getElementById("extractBtn").disabled = false;
+          }
+        });
+
+      renderFileList();
+    </script>
+  </body>
+</html>
