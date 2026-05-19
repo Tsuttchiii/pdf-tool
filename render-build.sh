@@ -1,2 +1,2 @@
 #!/bin/bash
-echo "LibreOffice is pre-installed on Render"
+pip install flask gunicorn
