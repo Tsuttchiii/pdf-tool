@@ -4,277 +4,600 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PDF ツール</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
     <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --bg: #060610;
+        --bg2: #0d0d1f;
+        --bg3: #12122a;
+        --border: #1e1e3f;
+        --border2: #2a2a5a;
+        --text: #e0e0ff;
+        --text2: #8888bb;
+        --text3: #44446a;
+        --pink: #ff2d78;
+        --cyan: #00ffe7;
+        --yellow: #b8ff47;
+        --purple: #9d4edd;
+        --pink-glow: 0 0 12px rgba(255,45,120,0.6);
+        --cyan-glow: 0 0 12px rgba(0,255,231,0.6);
+        --yellow-glow: 0 0 12px rgba(184,255,71,0.6);
+      }
+
+      html { scroll-behavior: smooth; }
+
       body {
-        font-family:
-          system-ui,
-          -apple-system,
-          Segoe UI,
-          Roboto,
-          Helvetica,
-          Arial;
-        margin: 32px;
-        background: #f5f5f5;
+        font-family: 'Rajdhani', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding: 48px 24px;
+        background-image:
+          radial-gradient(ellipse at 0% 0%, rgba(255,45,120,0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 100% 0%, rgba(0,255,231,0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 100%, rgba(157,78,221,0.07) 0%, transparent 50%);
+        background-attachment: fixed;
       }
-      h1 {
-        margin-bottom: 24px;
+
+      /* スキャンライン */
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+        pointer-events: none;
+        z-index: 1000;
       }
-      h2 {
-        margin: 0 0 10px 0;
-        font-size: 16px;
+
+      /* ネオン背景装飾 */
+      .bg-deco {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
       }
+
+      .bg-deco span {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(60px);
+        opacity: 0.12;
+        animation: floatDeco 12s ease-in-out infinite;
+      }
+
+      .bg-deco span:nth-child(1) {
+        width: 400px; height: 400px;
+        background: var(--pink);
+        top: -100px; left: -100px;
+        animation-duration: 14s;
+      }
+
+      .bg-deco span:nth-child(2) {
+        width: 300px; height: 300px;
+        background: var(--cyan);
+        top: 20%; right: -80px;
+        animation-duration: 10s;
+        animation-delay: -4s;
+        opacity: 0.09;
+      }
+
+      .bg-deco span:nth-child(3) {
+        width: 250px; height: 250px;
+        background: var(--pink);
+        bottom: 10%; left: 30%;
+        animation-duration: 16s;
+        animation-delay: -8s;
+        opacity: 0.08;
+      }
+
+      .bg-deco span:nth-child(4) {
+        width: 180px; height: 180px;
+        background: var(--purple);
+        top: 50%; right: 20%;
+        animation-duration: 11s;
+        animation-delay: -2s;
+        opacity: 0.1;
+      }
+
+      /* ネオングリッド */
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+          linear-gradient(rgba(255,45,120,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,45,120,0.03) 1px, transparent 1px);
+        background-size: 60px 60px;
+        mask-image: radial-gradient(ellipse at 50% 0%, black 0%, transparent 70%);
+      }
+
+      /* ネオンライン */
+      .bg-lines {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+      }
+
+      .bg-lines::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -50%;
+        width: 1px; height: 100%;
+        background: linear-gradient(180deg, transparent, var(--pink), transparent);
+        opacity: 0.15;
+        animation: scanLine 8s linear infinite;
+      }
+
+      .bg-lines::after {
+        content: '';
+        position: absolute;
+        top: 0; left: -50%;
+        width: 1px; height: 100%;
+        background: linear-gradient(180deg, transparent, var(--cyan), transparent);
+        opacity: 0.1;
+        animation: scanLine 12s linear infinite;
+        animation-delay: -5s;
+      }
+
+      @keyframes floatDeco {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(30px, -20px) scale(1.05); }
+        66% { transform: translate(-20px, 15px) scale(0.97); }
+      }
+
+      @keyframes scanLine {
+        from { left: -5%; }
+        to   { left: 110%; }
+      }
+
+      body > *:not(.bg-deco):not(.bg-grid):not(.bg-lines) {
+        position: relative;
+        z-index: 1;
+      }
+
+      .page-header {
+        max-width: 720px;
+        margin: 0 auto 48px;
+        position: relative;
+      }
+
+      .page-header h1 {
+        font-size: clamp(2.4rem, 6vw, 4rem);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        line-height: 1;
+        color: var(--text);
+      }
+
+      .page-header h1 .pink { color: var(--pink); text-shadow: var(--pink-glow); }
+      .page-header h1 .cyan { color: var(--cyan); text-shadow: var(--cyan-glow); }
+
+      .page-header p {
+        margin-top: 10px;
+        color: var(--text3);
+        font-size: 12px;
+        letter-spacing: 0.15em;
+        font-family: 'Share Tech Mono', monospace;
+        text-transform: uppercase;
+      }
+
+      .page-header p span {
+        color: var(--yellow);
+        text-shadow: var(--yellow-glow);
+      }
+
       .card {
         max-width: 720px;
-        padding: 20px;
-        border: 1px solid #e1e1e1;
-        border-radius: 8px;
-        background: #fff;
-        margin-bottom: 24px;
+        margin: 0 auto 24px;
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 0;
+        padding: 28px;
+        position: relative;
+        overflow: hidden;
+        animation: fadeUp 0.5s ease both;
+        clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
       }
+
+      .card:nth-child(2) { animation-delay: 0.05s; }
+      .card:nth-child(3) { animation-delay: 0.1s; }
+
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* カードのグロー縁取り */
+      .card.pink-card { box-shadow: inset 0 0 30px rgba(255,45,120,0.04), 0 0 0 1px rgba(255,45,120,0.2); }
+      .card.cyan-card  { box-shadow: inset 0 0 30px rgba(0,255,231,0.04), 0 0 0 1px rgba(0,255,231,0.2); }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+      }
+
+      .card-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 60px; height: 1px;
+      }
+
+      .pink-card .card-header::after { background: var(--pink); box-shadow: var(--pink-glow); }
+      .cyan-card  .card-header::after { background: var(--cyan);  box-shadow: var(--cyan-glow); }
+
+      .card-icon {
+        width: 34px; height: 34px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 16px;
+        border: 1px solid var(--border2);
+        background: var(--bg3);
+        flex-shrink: 0;
+      }
+
+      .pink-card .card-icon { border-color: rgba(255,45,120,0.4); box-shadow: inset 0 0 10px rgba(255,45,120,0.1); }
+      .cyan-card  .card-icon { border-color: rgba(0,255,231,0.4);  box-shadow: inset 0 0 10px rgba(0,255,231,0.1); }
+
+      .card-header h2 {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .pink-card .card-header h2 { color: var(--pink); text-shadow: var(--pink-glow); }
+      .cyan-card  .card-header h2 { color: var(--cyan);  text-shadow: var(--cyan-glow); }
+
+      .tag {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 10px;
+        padding: 2px 7px;
+        border: 1px solid;
+        letter-spacing: 0.1em;
+        opacity: 0.6;
+      }
+
+      .pink-card .tag { color: var(--pink); border-color: var(--pink); }
+      .cyan-card  .tag { color: var(--cyan);  border-color: var(--cyan); }
+
+      label {
+        font-size: 12px;
+        color: var(--text2);
+        letter-spacing: 0.08em;
+        display: block;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        font-family: 'Share Tech Mono', monospace;
+      }
+
       input[type="file"] {
         display: block;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
+        font-size: 12px;
+        color: var(--text3);
+        font-family: 'Share Tech Mono', monospace;
       }
+
+      input[type="number"] {
+        background: var(--bg3);
+        border: 1px solid var(--border2);
+        color: var(--cyan);
+        padding: 6px 10px;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 13px;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      input[type="number"]:focus { border-color: var(--cyan); box-shadow: 0 0 8px rgba(0,255,231,0.3); }
+      input[type="checkbox"] { accent-color: var(--pink); }
+
+      select {
+        background: var(--bg3);
+        border: 1px solid var(--border2);
+        color: var(--text);
+        padding: 8px 10px;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 12px;
+        outline: none;
+        width: 100%;
+        margin-top: 6px;
+        transition: border-color 0.2s;
+      }
+
+      select:focus { border-color: var(--pink); }
+
       button {
-        padding: 8px 12px;
-        font-size: 15px;
+        padding: 9px 18px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
         cursor: pointer;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        background: #fff;
+        border: 1px solid var(--border2);
+        background: var(--bg3);
+        color: var(--text2);
+        font-family: 'Rajdhani', sans-serif;
+        transition: all 0.15s;
+        position: relative;
+        overflow: hidden;
       }
-      button:hover {
-        background: #f0f0f0;
+
+      button::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.4s;
       }
+
+      button:hover:not(:disabled)::before { transform: translateX(100%); }
+
+      button:hover:not(:disabled) {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        box-shadow: 0 0 12px rgba(0,255,231,0.2), inset 0 0 12px rgba(0,255,231,0.05);
+      }
+
       button.primary {
-        background: #1a1a1a;
+        background: linear-gradient(135deg, rgba(255,45,120,0.15), rgba(0,255,231,0.1));
+        border: 1px solid var(--pink);
+        color: var(--pink);
+        box-shadow: 0 0 16px rgba(255,45,120,0.2);
+      }
+
+      button.primary:hover:not(:disabled) {
+        background: linear-gradient(135deg, rgba(255,45,120,0.3), rgba(0,255,231,0.15));
+        box-shadow: 0 0 24px rgba(255,45,120,0.4);
         color: #fff;
-        border-color: #1a1a1a;
+        border-color: var(--pink);
       }
-      button.primary:hover {
-        background: #333;
-      }
-      button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .status {
-        margin-top: 12px;
-        color: #444;
-        min-height: 20px;
-      }
-      .status.error {
-        color: #c00;
-      }
-      .status.success {
-        color: #080;
-      }
+
+      button:disabled { opacity: 0.25; cursor: not-allowed; }
+
       .drop-zone {
         margin-top: 12px;
-        padding: 18px;
-        border: 2px dashed #bbb;
-        border-radius: 8px;
+        padding: 20px;
+        border: 1px dashed var(--border2);
         text-align: center;
-        color: #666;
+        color: var(--text3);
         cursor: pointer;
+        font-size: 12px;
+        font-family: 'Share Tech Mono', monospace;
+        transition: all 0.2s;
+        background: var(--bg);
+        letter-spacing: 0.05em;
       }
-      .drop-zone.dragover {
-        border-color: #444;
-        color: #222;
-        background: #f7f7f7;
+
+      .drop-zone:hover, .drop-zone.dragover {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        background: rgba(0,255,231,0.03);
+        box-shadow: inset 0 0 20px rgba(0,255,231,0.05);
       }
-      .file-list {
-        margin-top: 12px;
-      }
+
+      .file-list { margin-top: 12px; }
+
       .file-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 10px 12px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        margin-top: 8px;
-        background: #fafafa;
+        padding: 9px 14px;
+        border: 1px solid var(--border);
+        border-left: 2px solid var(--pink);
+        margin-top: 6px;
+        background: var(--bg);
         cursor: grab;
+        transition: all 0.15s;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 11px;
       }
-      .file-item.dragging {
-        opacity: 0.5;
-      }
-      .file-name {
-        flex: 1;
-        margin-right: 12px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .file-actions button {
-        margin-left: 8px;
-      }
+
+      .file-item:hover { border-color: var(--pink); background: rgba(255,45,120,0.03); }
+      .file-item.dragging { opacity: 0.3; }
+      .file-item.dragover { border-color: var(--cyan); border-left-color: var(--cyan); }
+
+      .file-name { flex: 1; margin-right: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+      .file-actions button { margin-left: 8px; }
+
       .section {
-        margin-top: 16px;
-        padding: 12px;
-        border: 1px solid #e1e1e1;
-        border-radius: 8px;
-        background: #fafafa;
+        margin-top: 20px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-left: 2px solid var(--purple);
+        background: rgba(157,78,221,0.03);
       }
-      .row {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        flex-wrap: wrap;
+
+      .section h2 {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--purple);
+        margin-bottom: 12px;
+        font-family: 'Share Tech Mono', monospace;
+        text-shadow: 0 0 8px rgba(157,78,221,0.5);
       }
+
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+      .status {
+        margin-top: 14px;
+        color: var(--text3);
+        min-height: 20px;
+        font-size: 11px;
+        font-family: 'Share Tech Mono', monospace;
+        letter-spacing: 0.05em;
+      }
+
+      .status.error { color: var(--pink); text-shadow: var(--pink-glow); }
+      .status.success { color: var(--yellow); text-shadow: var(--yellow-glow); }
+
       .word-drop-zone {
         margin-top: 12px;
-        padding: 32px 18px;
-        border: 2px dashed #bbb;
-        border-radius: 8px;
+        padding: 44px 18px;
+        border: 1px dashed var(--border2);
         text-align: center;
-        color: #666;
+        color: var(--text3);
         cursor: pointer;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 13px;
         transition: all 0.2s;
+        background: var(--bg);
+        line-height: 2;
+        letter-spacing: 0.05em;
       }
-      .word-drop-zone.dragover {
-        border-color: #1a1a1a;
-        background: #f0f0f0;
-        color: #222;
+
+      .word-drop-zone:hover, .word-drop-zone.dragover {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        background: rgba(0,255,231,0.03);
+        box-shadow: inset 0 0 30px rgba(0,255,231,0.04);
       }
+
       .word-drop-zone.has-file {
-        border-color: #080;
-        background: #f0fff0;
-        color: #080;
+        border-color: var(--yellow);
+        color: var(--yellow);
+        background: rgba(184,255,71,0.03);
+        box-shadow: inset 0 0 30px rgba(184,255,71,0.04);
       }
+
       .progress-bar {
-        height: 6px;
-        background: #eee;
-        border-radius: 3px;
-        margin-top: 10px;
+        height: 2px;
+        background: var(--border);
+        margin-top: 14px;
         overflow: hidden;
+        position: relative;
       }
+
       .progress-bar-inner {
         height: 100%;
-        background: #1a1a1a;
+        background: linear-gradient(90deg, var(--pink), var(--cyan));
+        box-shadow: 0 0 8px rgba(0,255,231,0.8);
         width: 0;
-        transition: width 0.3s;
-        border-radius: 3px;
+        transition: width 0.3s ease;
       }
-      .server-status {
-        font-size: 13px;
-        padding: 6px 10px;
-        border-radius: 4px;
-        background: #fff3cd;
-        color: #856404;
-        display: inline-block;
-        margin-bottom: 12px;
+
+      .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--text2);
+        font-family: 'Share Tech Mono', monospace;
       }
-      .server-status.ok {
-        background: #d1e7dd;
-        color: #0a3622;
+
+      /* コーナーデコレーション */
+      .card::after {
+        content: '';
+        position: absolute;
+        bottom: 0; right: 0;
+        width: 16px; height: 16px;
+        border-bottom: 1px solid;
+        border-right: 1px solid;
       }
+
+      .pink-card::after { border-color: rgba(255,45,120,0.4); }
+      .cyan-card::after  { border-color: rgba(0,255,231,0.4); }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
   </head>
   <body>
-    <h1>PDF ツール</h1>
+
+    <div class="bg-deco">
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <div class="bg-grid"></div>
+    <div class="bg-lines"></div>
+
+    <div class="page-header">
+      <h1><span class="pink">PDF</span> <span class="cyan">ツール</span></h1>
+      <p>// <span>MERGE</span> · <span>EXTRACT</span> · <span>CONVERT</span></p>
+    </div>
 
     <!-- ===== PDF 結合 ===== -->
-    <div class="card">
-      <h2>🔗 PDF 結合</h2>
-      <label
-        >結合したいPDFを複数選択してください（順序はファイル選択順になります）</label
-      >
+    <div class="card pink-card">
+      <div class="card-header">
+        <div class="card-icon">🔗</div>
+        <h2>PDF 結合</h2>
+        <span class="tag">browser</span>
+      </div>
+      <label>結合したいPDFを複数選択（ドラッグで順序変更可）</label>
       <input id="files" type="file" accept="application/pdf" multiple />
-      <div id="dropZone" class="drop-zone">ここにPDFをドロップして追加</div>
+      <div id="dropZone" class="drop-zone">// DROP PDF FILES HERE</div>
       <div id="fileList" class="file-list"></div>
-      <div style="margin-top: 12px">
+      <div class="btns">
         <button id="mergeBtn">結合してダウンロード</button>
-        <button id="clearBtn">選択をクリア</button>
+        <button id="clearBtn">クリア</button>
       </div>
-      <div style="margin-top: 8px">
-        <label
-          ><input id="appendA4" type="checkbox" /> 結合ファイルの末尾に A4
-          白紙ページを追加する</label
-        >
-      </div>
-      <div style="margin-top: 6px">
-        <label
-          >追加ページ数:
-          <input
-            id="appendA4Count"
-            type="number"
-            min="1"
-            value="1"
-            style="width: 72px; margin-left: 8px"
-        /></label>
+      <div class="checkbox-row">
+        <input id="appendA4" type="checkbox" />
+        <label style="margin:0;text-transform:none">末尾にA4白紙ページを追加</label>
+        <input id="appendA4Count" type="number" min="1" value="1" style="width:64px" />
+        <label style="margin:0;text-transform:none">枚</label>
       </div>
 
-      <!-- ページ範囲抽出 -->
       <div class="section">
-        <h2>PDF ページ範囲抽出</h2>
-        <div style="margin-bottom: 8px">
-          <label for="extractFile">抽出元PDF:</label>
-          <select
-            id="extractFile"
-            style="width: 100%; margin-top: 6px; padding: 6px"
-          ></select>
-        </div>
-        <div class="row">
-          <label
-            >開始ページ:<input
-              id="extractStartPage"
-              type="number"
-              min="1"
-              value="1"
-              style="width: 80px; margin-left: 6px"
-          /></label>
-          <label
-            >終了ページ:<input
-              id="extractEndPage"
-              type="number"
-              min="1"
-              value="1"
-              style="width: 80px; margin-left: 6px"
-          /></label>
-          <button id="extractBtn">抽出してダウンロード</button>
+        <h2>// PAGE EXTRACT</h2>
+        <label for="extractFile">抽出元PDF</label>
+        <select id="extractFile"></select>
+        <div class="row" style="margin-top:12px">
+          <label style="margin:0;text-transform:none">開始 <input id="extractStartPage" type="number" min="1" value="1" style="width:72px;margin-left:6px" /></label>
+          <label style="margin:0;text-transform:none">終了 <input id="extractEndPage" type="number" min="1" value="1" style="width:72px;margin-left:6px" /></label>
+          <button id="extractBtn">抽出</button>
         </div>
       </div>
       <div class="status" id="status"></div>
     </div>
 
     <!-- ===== Word → PDF 変換 ===== -->
-    <div class="card">
-      <h2>📄 Word → PDF 変換</h2>
+    <div class="card cyan-card">
+      <div class="card-header">
+        <div class="card-icon">📄</div>
+        <h2>Word → PDF</h2>
+        <span class="tag">server</span>
+      </div>
       <div id="wordDropZone" class="word-drop-zone">
         <div id="wordDropLabel">
-          ここに .docx ファイルをドロップ<br /><small
-            >またはクリックして選択</small
-          >
+          // DROP .DOCX FILE HERE<br /><small style="font-size:11px;opacity:0.4">またはクリックして選択</small>
         </div>
       </div>
-      <input
-        id="wordInput"
-        type="file"
-        accept=".docx,.doc"
-        style="display: none"
-      />
-      <div class="progress-bar" id="wordProgress" style="display: none">
+      <input id="wordInput" type="file" accept=".docx,.doc" style="display:none" />
+      <div class="progress-bar" id="wordProgress" style="display:none">
         <div class="progress-bar-inner" id="wordProgressInner"></div>
       </div>
-      <div style="margin-top: 12px">
-        <button class="primary" id="convertBtn" disabled>
-          PDFに変換してダウンロード
-        </button>
+      <div class="btns">
+        <button class="primary" id="convertBtn" disabled>PDFに変換してダウンロード</button>
       </div>
       <div class="status" id="wordStatus"></div>
     </div>
 
     <script>
-      // ローカルで開いている場合はlocalhost、ネット上のサーバーで開いている場合は同じオリジンを使う
       const SERVER =
         location.hostname === "localhost" || location.hostname === "127.0.0.1"
           ? "http://localhost:8765"
           : location.origin;
 
-      // ===== Word → PDF =====
       const wordDropZone = document.getElementById("wordDropZone");
       const wordDropLabel = document.getElementById("wordDropLabel");
       const wordInput = document.getElementById("wordInput");
@@ -285,100 +608,53 @@
       let selectedWordFile = null;
 
       wordDropZone.addEventListener("click", () => wordInput.click());
-      wordDropZone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        wordDropZone.classList.add("dragover");
-      });
-      wordDropZone.addEventListener("dragleave", () =>
-        wordDropZone.classList.remove("dragover"),
-      );
-      wordDropZone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        wordDropZone.classList.remove("dragover");
-        const f = e.dataTransfer.files[0];
-        if (f) setWordFile(f);
-      });
-      wordInput.addEventListener("change", () => {
-        if (wordInput.files[0]) setWordFile(wordInput.files[0]);
-        wordInput.value = "";
-      });
+      wordDropZone.addEventListener("dragover", e => { e.preventDefault(); wordDropZone.classList.add("dragover"); });
+      wordDropZone.addEventListener("dragleave", () => wordDropZone.classList.remove("dragover"));
+      wordDropZone.addEventListener("drop", e => { e.preventDefault(); wordDropZone.classList.remove("dragover"); const f = e.dataTransfer.files[0]; if (f) setWordFile(f); });
+      wordInput.addEventListener("change", () => { if (wordInput.files[0]) setWordFile(wordInput.files[0]); wordInput.value = ""; });
 
       function setWordFile(file) {
-        if (!file.name.match(/\.(docx|doc)$/i)) {
-          setWordStatus(
-            "error",
-            ".docx または .doc ファイルを選択してください",
-          );
-          return;
-        }
+        if (!file.name.match(/\.(docx|doc)$/i)) { setWordStatus("error", "// error: .docx または .doc を選択してください"); return; }
         selectedWordFile = file;
-        wordDropLabel.innerHTML = `📄 ${file.name}<br><small>${(file.size / 1024).toFixed(1)} KB</small>`;
+        wordDropLabel.innerHTML = `📄 ${file.name}<br><small style="font-size:11px;opacity:0.5">${(file.size/1024).toFixed(1)} KB</small>`;
         wordDropZone.className = "word-drop-zone has-file";
         convertBtn.disabled = false;
         setWordStatus("", "");
       }
 
-      function setWordStatus(type, msg) {
-        wordStatus.textContent = msg;
-        wordStatus.className = "status" + (type ? " " + type : "");
-      }
+      function setWordStatus(type, msg) { wordStatus.textContent = msg; wordStatus.className = "status" + (type ? " " + type : ""); }
 
       convertBtn.addEventListener("click", async () => {
         if (!selectedWordFile) return;
         convertBtn.disabled = true;
         wordProgress.style.display = "block";
         wordProgressInner.style.width = "30%";
-        setWordStatus("", "変換中...");
-
+        setWordStatus("", "// converting...");
         const formData = new FormData();
         formData.append("file", selectedWordFile, selectedWordFile.name);
-
         try {
           wordProgressInner.style.width = "60%";
-          const res = await fetch(SERVER + "/convert", {
-            method: "POST",
-            body: formData,
-          });
+          const res = await fetch(SERVER + "/convert", { method: "POST", body: formData });
           wordProgressInner.style.width = "90%";
-
-          if (!res.ok) {
-            const err = await res
-              .json()
-              .catch(() => ({ error: "不明なエラー" }));
-            throw new Error(err.error || "変換に失敗しました");
-          }
-
+          if (!res.ok) { const err = await res.json().catch(() => ({ error: "不明なエラー" })); throw new Error(err.error || "変換に失敗しました"); }
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          const outName = selectedWordFile.name.replace(
-            /\.(docx|doc)$/i,
-            ".pdf",
-          );
+          const outName = selectedWordFile.name.replace(/\.(docx|doc)$/i, ".pdf");
           a.download = outName;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
+          document.body.appendChild(a); a.click(); a.remove();
           URL.revokeObjectURL(url);
-
           wordProgressInner.style.width = "100%";
-          setWordStatus(
-            "success",
-            `✅ 変換完了！ ${outName} をダウンロードしました`,
-          );
+          setWordStatus("success", `// done — ${outName}`);
         } catch (err) {
-          setWordStatus("error", "エラー: " + err.message);
+          setWordStatus("error", "// error: " + err.message);
         } finally {
           convertBtn.disabled = false;
-          setTimeout(() => {
-            wordProgress.style.display = "none";
-            wordProgressInner.style.width = "0";
-          }, 1000);
+          setTimeout(() => { wordProgress.style.display = "none"; wordProgressInner.style.width = "0"; }, 1000);
         }
       });
 
-      // ===== PDF 結合 =====
       const input = document.getElementById("files");
       const dropZone = document.getElementById("dropZone");
       const fileListEl = document.getElementById("fileList");
@@ -387,125 +663,68 @@
       const appendA4 = document.getElementById("appendA4");
       const appendA4Count = document.getElementById("appendA4Count");
       const status = document.getElementById("status");
-
       let selectedFiles = [];
       let dragSrcIndex = null;
 
-      function setStatus(text) {
-        status.textContent = text;
-      }
+      function setStatus(text) { status.textContent = text ? "// " + text : ""; }
 
       function renderFileList() {
         fileListEl.innerHTML = "";
-        if (selectedFiles.length === 0) {
-          fileListEl.textContent =
-            "まだPDFがありません。ファイルを選択するか、ここにドロップしてください。";
-          updateExtractFileOptions();
-          return;
-        }
+        if (selectedFiles.length === 0) { fileListEl.innerHTML = `<div style="font-size:11px;color:var(--text3);font-family:'Share Tech Mono',monospace;margin-top:8px">// no files selected</div>`; updateExtractFileOptions(); return; }
         selectedFiles.forEach((file, index) => {
           const item = document.createElement("div");
           item.className = "file-item";
           item.draggable = true;
           item.dataset.index = index;
-
           const name = document.createElement("div");
           name.className = "file-name";
-          name.textContent = `${index + 1}. ${file.name}`;
-
+          name.textContent = `[${String(index+1).padStart(2,'0')}] ${file.name}`;
           const actions = document.createElement("div");
           actions.className = "file-actions";
           const removeBtn = document.createElement("button");
           removeBtn.type = "button";
           removeBtn.textContent = "削除";
-          removeBtn.addEventListener("click", () => {
-            selectedFiles.splice(index, 1);
-            renderFileList();
-          });
+          removeBtn.addEventListener("click", () => { selectedFiles.splice(index, 1); renderFileList(); });
           actions.appendChild(removeBtn);
-
           item.appendChild(name);
           item.appendChild(actions);
-
-          item.addEventListener("dragstart", (e) => {
-            dragSrcIndex = index;
-            item.classList.add("dragging");
-            e.dataTransfer.effectAllowed = "move";
-          });
-          item.addEventListener("dragend", () => {
-            item.classList.remove("dragging");
-            dragSrcIndex = null;
-          });
-          item.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            item.classList.add("dragover");
-          });
-          item.addEventListener("dragleave", () =>
-            item.classList.remove("dragover"),
-          );
-          item.addEventListener("drop", (e) => {
-            e.preventDefault();
-            item.classList.remove("dragover");
-            const destIndex = Number(item.dataset.index);
-            if (dragSrcIndex === null || dragSrcIndex === destIndex) return;
-            const [moved] = selectedFiles.splice(dragSrcIndex, 1);
-            selectedFiles.splice(destIndex, 0, moved);
-            renderFileList();
-          });
-
+          item.addEventListener("dragstart", e => { dragSrcIndex = index; item.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+          item.addEventListener("dragend", () => { item.classList.remove("dragging"); dragSrcIndex = null; });
+          item.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; item.classList.add("dragover"); });
+          item.addEventListener("dragleave", () => item.classList.remove("dragover"));
+          item.addEventListener("drop", e => { e.preventDefault(); item.classList.remove("dragover"); const destIndex = Number(item.dataset.index); if (dragSrcIndex === null || dragSrcIndex === destIndex) return; const [moved] = selectedFiles.splice(dragSrcIndex, 1); selectedFiles.splice(destIndex, 0, moved); renderFileList(); });
           fileListEl.appendChild(item);
         });
         updateExtractFileOptions();
       }
 
       function addFiles(files) {
-        const arr = Array.from(files).filter(
-          (f) =>
-            f.type === "application/pdf" ||
-            f.name.toLowerCase().endsWith(".pdf"),
-        );
+        const arr = Array.from(files).filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
         if (!arr.length) return;
         selectedFiles.push(...arr);
         renderFileList();
-        setStatus(`${selectedFiles.length} 件のPDFを選択中`);
+        setStatus(`${selectedFiles.length} files loaded`);
       }
 
-      input.addEventListener("change", () => {
-        addFiles(input.files);
-        input.value = "";
-      });
+      input.addEventListener("change", () => { addFiles(input.files); input.value = ""; });
       dropZone.addEventListener("click", () => input.click());
-      dropZone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        dropZone.classList.add("dragover");
-      });
-      dropZone.addEventListener("dragleave", () =>
-        dropZone.classList.remove("dragover"),
-      );
-      dropZone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        dropZone.classList.remove("dragover");
-        if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
-      });
+      dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+      dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+      dropZone.addEventListener("drop", e => { e.preventDefault(); dropZone.classList.remove("dragover"); if (e.dataTransfer.files) addFiles(e.dataTransfer.files); });
 
       async function createMergedPDF(fileList) {
-        if (!fileList || !fileList.length)
-          throw new Error("ファイルが選択されていません");
-        setStatus("結合を開始しています...");
+        if (!fileList || !fileList.length) throw new Error("ファイルが選択されていません");
+        setStatus("merging...");
         const mergedPdf = await PDFLib.PDFDocument.create();
         for (const file of Array.from(fileList)) {
-          setStatus(`読み込み中: ${file.name}`);
+          setStatus(`loading: ${file.name}`);
           const ab = await file.arrayBuffer();
           const src = await PDFLib.PDFDocument.load(ab);
           const copied = await mergedPdf.copyPages(src, src.getPageIndices());
-          copied.forEach((p) => mergedPdf.addPage(p));
+          copied.forEach(p => mergedPdf.addPage(p));
         }
-        if (appendA4.checked) {
-          let count = Math.max(1, parseInt(appendA4Count.value, 10) || 1);
-          for (let i = 0; i < count; i++) mergedPdf.addPage([595.28, 841.89]);
-        }
-        setStatus("保存中...");
+        if (appendA4.checked) { let count = Math.max(1, parseInt(appendA4Count.value,10)||1); for (let i=0;i<count;i++) mergedPdf.addPage([595.28,841.89]); }
+        setStatus("saving...");
         return mergedPdf.save();
       }
 
@@ -513,60 +732,30 @@
         mergeBtn.disabled = true;
         try {
           const bytes = await createMergedPDF(fileList);
-          const url = URL.createObjectURL(
-            new Blob([bytes], { type: "application/pdf" }),
-          );
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "merged.pdf";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
+          const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+          const a = document.createElement("a"); a.href = url; a.download = "merged.pdf";
+          document.body.appendChild(a); a.click(); a.remove();
           URL.revokeObjectURL(url);
-          setStatus("結合が完了しました。ダウンロードを開始しました。");
-        } catch (err) {
-          setStatus("エラー: " + (err.message || err));
-        } finally {
-          mergeBtn.disabled = false;
-        }
+          setStatus("merge complete");
+        } catch (err) { setStatus("error: " + (err.message || err)); } finally { mergeBtn.disabled = false; }
       }
 
-      mergeBtn.addEventListener("click", () => {
-        if (!selectedFiles.length) {
-          setStatus("ファイルを選択してください");
-          return;
-        }
-        mergePDFs(selectedFiles);
-      });
-      clearBtn.addEventListener("click", () => {
-        selectedFiles = [];
-        input.value = "";
-        renderFileList();
-        setStatus("選択をクリアしました");
-      });
+      mergeBtn.addEventListener("click", () => { if (!selectedFiles.length) { setStatus("no files selected"); return; } mergePDFs(selectedFiles); });
+      clearBtn.addEventListener("click", () => { selectedFiles = []; input.value = ""; renderFileList(); setStatus("cleared"); });
 
       async function createExtractedPDF(file, startPage, endPage) {
-        setStatus(`抽出中: ${file.name} の ${startPage}〜${endPage} ページ`);
+        setStatus(`extracting: p.${startPage}–${endPage}`);
         const ab = await file.arrayBuffer();
         const src = await PDFLib.PDFDocument.load(ab);
         const pageCount = src.getPageCount();
-        if (
-          startPage < 1 ||
-          endPage < 1 ||
-          startPage > pageCount ||
-          endPage > pageCount
-        )
-          throw new Error(
-            `ページ番号は1〜${pageCount}の範囲で指定してください`,
-          );
-        if (startPage > endPage)
-          throw new Error("開始ページは終了ページ以下にしてください");
+        if (startPage < 1 || endPage < 1 || startPage > pageCount || endPage > pageCount) throw new Error(`range: 1–${pageCount}`);
+        if (startPage > endPage) throw new Error("start <= end");
         const indices = [];
-        for (let i = startPage - 1; i <= endPage - 1; i++) indices.push(i);
+        for (let i = startPage-1; i <= endPage-1; i++) indices.push(i);
         const out = await PDFLib.PDFDocument.create();
         const copied = await out.copyPages(src, indices);
-        copied.forEach((p) => out.addPage(p));
-        setStatus("保存中...");
+        copied.forEach(p => out.addPage(p));
+        setStatus("saving...");
         return out.save();
       }
 
@@ -574,63 +763,29 @@
         const select = document.getElementById("extractFile");
         if (!select) return;
         select.innerHTML = "";
-        selectedFiles.forEach((f, i) => {
-          const opt = document.createElement("option");
-          opt.value = String(i);
-          opt.textContent = `${i + 1}. ${f.name}`;
-          select.appendChild(opt);
-        });
+        selectedFiles.forEach((f, i) => { const opt = document.createElement("option"); opt.value = String(i); opt.textContent = `[${String(i+1).padStart(2,'0')}] ${f.name}`; select.appendChild(opt); });
       }
 
-      document
-        .getElementById("extractBtn")
-        .addEventListener("click", async () => {
-          if (!selectedFiles.length) {
-            setStatus("抽出したいPDFを選択してください");
-            return;
-          }
-          const sel = document.getElementById("extractFile");
-          const fileIndex = sel ? Number(sel.value) : 0;
-          const start = parseInt(
-            document.getElementById("extractStartPage").value,
-            10,
-          );
-          const end = parseInt(
-            document.getElementById("extractEndPage").value,
-            10,
-          );
-          if (isNaN(start) || isNaN(end) || start < 1 || end < 1) {
-            setStatus("正しいページ範囲を入力してください");
-            return;
-          }
-          document.getElementById("extractBtn").disabled = true;
-          try {
-            const bytes = await createExtractedPDF(
-              selectedFiles[fileIndex],
-              start,
-              end,
-            );
-            const url = URL.createObjectURL(
-              new Blob([bytes], { type: "application/pdf" }),
-            );
-            const a = document.createElement("a");
-            a.href = url;
-            const safeName = selectedFiles[fileIndex].name.replace(
-              /\.pdf$/i,
-              "",
-            );
-            a.download = `${safeName}-pages${start}-${end}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-            setStatus("抽出が完了しました。");
-          } catch (err) {
-            setStatus("エラー: " + (err.message || err));
-          } finally {
-            document.getElementById("extractBtn").disabled = false;
-          }
-        });
+      document.getElementById("extractBtn").addEventListener("click", async () => {
+        if (!selectedFiles.length) { setStatus("no files selected"); return; }
+        const sel = document.getElementById("extractFile");
+        const fileIndex = sel ? Number(sel.value) : 0;
+        const start = parseInt(document.getElementById("extractStartPage").value, 10);
+        const end = parseInt(document.getElementById("extractEndPage").value, 10);
+        if (isNaN(start) || isNaN(end) || start < 1 || end < 1) { setStatus("invalid page range"); return; }
+        document.getElementById("extractBtn").disabled = true;
+        try {
+          const bytes = await createExtractedPDF(selectedFiles[fileIndex], start, end);
+          const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+          const a = document.createElement("a"); a.href = url;
+          const safeName = selectedFiles[fileIndex].name.replace(/\.pdf$/i, "");
+          a.download = `${safeName}-p${start}-${end}.pdf`;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+          setStatus("extract complete");
+        } catch (err) { setStatus("error: " + (err.message || err)); }
+        finally { document.getElementById("extractBtn").disabled = false; }
+      });
 
       renderFileList();
     </script>
