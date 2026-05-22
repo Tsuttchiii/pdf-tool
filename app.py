@@ -90,7 +90,12 @@ def scan_image():
         file.save(input_path)
 
         # 画像読み込み
-        img = cv2.imread(input_path)
+        pil_img = Image.open(input_path).convert("RGB")
+
+　　　　　img = cv2.cvtColor(
+　　　　　np.array(pil_img),
+    　　　cv2.COLOR_RGB2BGR
+　　　　　)
 
         # グレースケール化
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
