@@ -570,6 +570,26 @@
       <div class="status" id="status"></div>
     </div>
 
+    <div class="card pink-card">
+
+  <div class="card-header">
+    <div class="card-icon">📷</div>
+    <h2>SCAN ENHANCE</h2>
+    <span class="tag">opencv</span>
+  </div>
+
+  <input id="scanInput" type="file" accept="image/*" />
+
+  <div class="btns">
+    <button id="scanBtn">
+      白黒くっきり化
+    </button>
+  </div>
+
+  <div class="status" id="scanStatus"></div>
+
+</div>
+
     <!-- ===== Word → PDF 変換 ===== -->
     <div class="card cyan-card">
       <div class="card-header">
@@ -788,6 +808,58 @@
       });
 
       renderFileList();
+
+      const scanInput = document.getElementById("scanInput");
+const scanBtn = document.getElementById("scanBtn");
+const scanStatus = document.getElementById("scanStatus");
+
+scanBtn.addEventListener("click", async () => {
+
+  const file = scanInput.files[0];
+
+  if (!file) {
+    scanStatus.textContent = "画像を選択してください";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  scanStatus.textContent = "processing...";
+
+  try {
+
+    const res = await fetch("/scan", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      throw new Error("変換失敗");
+    }
+
+    const blob = await res.blob();
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "scanned.jpg";
+
+    a.click();
+
+    scanStatus.textContent = "done";
+
+  } catch(err) {
+
+    scanStatus.textContent = err.message;
+
+  }
+
+});
+
+      
     </script>
   </body>
 </html>
