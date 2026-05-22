@@ -823,13 +823,14 @@ scanBtn.addEventListener("click", async () => {
   }
 
   const formData = new FormData();
+
   formData.append("file", file);
 
   scanStatus.textContent = "processing...";
 
   try {
 
-    const res = await fetch("/scan", {
+    const res = await fetch(SERVER + "/scan", {
       method: "POST",
       body: formData
     });
@@ -847,11 +848,17 @@ scanBtn.addEventListener("click", async () => {
     a.href = url;
     a.download = "scanned.jpg";
 
+    document.body.appendChild(a);
+
     a.click();
+
+    a.remove();
+
+    URL.revokeObjectURL(url);
 
     scanStatus.textContent = "done";
 
-  } catch(err) {
+  } catch (err) {
 
     scanStatus.textContent = err.message;
 
