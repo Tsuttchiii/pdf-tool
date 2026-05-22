@@ -2,34 +2,51 @@
 Word → PDF 変換サーバー（Render用）
 LibreOffice を使って .docx ファイルを PDF に変換します。
 """
+
 from PIL import Image
 from pillow_heif import register_heif_opener
+
 import cv2
 import numpy as np
+
 import os
 import tempfile
 import urllib.parse
-from pathlib import Path
-from flask import Flask, request, Response, send_file
 import subprocess
 import shutil
 
+from pathlib import Path
+from flask import Flask, request, Response, send_file
+
+# HEIC対応
 register_heif_opener()
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
+# LibreOffice探索
 def find_soffice():
     for cmd in ("soffice", "libreoffice"):
         if shutil.which(cmd):
             return cmd
     return None
 
+
+# =========================
+# ホーム
+# =========================
+
 @app.route("/")
 def index():
     return app.send_static_file("tool.html")
 
+
+# =========================
+# Word → PDF
+# =========================
+
 @app.route("/convert", methods=["POST", "OPTIONS"])
 def convert():
+
     if request.method == "OPTIONS":
         res = Response()
         res.headers["Access-Control-Allow-Origin"] = "*"
@@ -38,6 +55,7 @@ def convert():
         return res
 
     soffice = find_soffice()
+
     if not soffice:
         return {"error": "LibreOfficeが見つかりません"}, 500
 
@@ -48,19 +66,38 @@ def convert():
     filename = file.filename
 
     with tempfile.TemporaryDirectory() as tmpdir:
+
         input_path = os.path.join(tmpdir, "input.docx")
         pdf_path = os.path.join(tmpdir, "input.pdf")
+
         file.save(input_path)
 
         result = subprocess.run(
-            [soffice, "--headless", "--convert-to", "pdf", input_path, "--outdir", tmpdir],
-            capture_output=True, text=True, timeout=60
+            [
+                soffice,
+                "--headless",
+                "--convert-to",
+                "pdf",
+                input_path,
+                "--outdir",
+                tmpdir
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60
         )
 
         if result.returncode != 0 or not os.path.exists(pdf_path):
-            return {"error": f"変換失敗: {result.stderr}"}, 500
+            return {
+                "error": f"変換失敗: {result.stderr}"
+            }, 500
 
-        out_name = Path(filename).stem + ".pdf" if filename else "converted.pdf"
+        out_name = (
+            Path(filename).stem + ".pdf"
+            if filename
+            else "converted.pdf"
+        )
+
         encoded_name = urllib.parse.quote(out_name)
 
         return send_file(
@@ -70,9 +107,10 @@ def convert():
             download_name=out_name
         )
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8765))
-    app.run(host="0.0.0.0", port=port)
+
+# =========================
+# SCAN ENHANCE
+# =========================
 
 @app.route("/scan", methods=["POST"])
 def scan_image():
@@ -84,21 +122,32 @@ def scan_image():
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
-        input_path = os.path.join(tmpdir, "input.jpg")
-        output_path = os.path.join(tmpdir, "output.jpg")
+        input_path = os.path.join(tmpdir, "input_image")
+        output_path = os.path.join(tmpdir, "scanned.jpg")
 
         file.save(input_path)
 
-        # 画像読み込み
-        pil_img = Image.open(input_path).convert("RGB")
+        try:
 
-　　　　　img = cv2.cvtColor(
-　　　　　np.array(pil_img),
-    　　　cv2.COLOR_RGB2BGR
-　　　　　)
+            # Pillowで画像読み込み（HEIC対応）
+            pil_img = Image.open(input_path).convert("RGB")
+
+            # Pillow → OpenCV形式
+            img = cv2.cvtColor(
+                np.array(pil_img),
+                cv2.COLOR_RGB2BGR
+            )
+
+        except Exception as e:
+            return {
+                "error": f"画像読み込み失敗: {str(e)}"
+            }, 400
 
         # グレースケール化
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(
+            img,
+            cv2.COLOR_BGR2GRAY
+        )
 
         # 白黒くっきり化
         th = cv2.adaptiveThreshold(
@@ -119,3 +168,17 @@ def scan_image():
             as_attachment=True,
             download_name="scanned.jpg"
         )
+
+
+# =========================
+# 起動
+# =========================
+
+if __name__ == "__main__":
+
+    port = int(os.environ.get("PORT", 8765))
+
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )
