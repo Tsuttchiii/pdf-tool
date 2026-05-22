@@ -3,3 +3,5 @@ gunicorn
 unoconv
 opencv-python-headless
 numpy
+pillow
+pillow-heif
