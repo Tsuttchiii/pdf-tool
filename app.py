@@ -2,7 +2,8 @@
 Word → PDF 変換サーバー（Render用）
 LibreOffice を使って .docx ファイルを PDF に変換します。
 """
-
+from PIL import Image
+from pillow_heif import register_heif_opener
 import cv2
 import numpy as np
 import os
@@ -12,6 +13,8 @@ from pathlib import Path
 from flask import Flask, request, Response, send_file
 import subprocess
 import shutil
+
+register_heif_opener()
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
