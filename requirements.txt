@@ -1,3 +1,5 @@
 flask
 gunicorn
 unoconv
+opencv-python-headless
+numpy
