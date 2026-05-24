@@ -3,13 +3,12 @@ Word → PDF 変換サーバー（Render用）
 LibreOffice を使って .docx ファイルを PDF に変換します。
 """
 
+from io import BytesIO
 from PIL import Image
 from pillow_heif import register_heif_opener
-register_heif_opener()
 
 import cv2
 import numpy as np
-
 import os
 import tempfile
 import urllib.parse
@@ -24,7 +23,7 @@ register_heif_opener()
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
-# LibreOffice探索
+
 def find_soffice():
     for cmd in ("soffice", "libreoffice"):
         if shutil.which(cmd):
@@ -69,36 +68,21 @@ def convert():
     with tempfile.TemporaryDirectory() as tmpdir:
 
         input_path = os.path.join(tmpdir, "input.docx")
-        pdf_path = os.path.join(tmpdir, "input.pdf")
+        pdf_path   = os.path.join(tmpdir, "input.pdf")
 
         file.save(input_path)
 
         result = subprocess.run(
-            [
-                soffice,
-                "--headless",
-                "--convert-to",
-                "pdf",
-                input_path,
-                "--outdir",
-                tmpdir
-            ],
+            [soffice, "--headless", "--convert-to", "pdf", input_path, "--outdir", tmpdir],
             capture_output=True,
             text=True,
             timeout=60
         )
 
         if result.returncode != 0 or not os.path.exists(pdf_path):
-            return {
-                "error": f"変換失敗: {result.stderr}"
-            }, 500
+            return {"error": f"変換失敗: {result.stderr}"}, 500
 
-        out_name = (
-            Path(filename).stem + ".pdf"
-            if filename
-            else "converted.pdf"
-        )
-
+        out_name     = Path(filename).stem + ".pdf" if filename else "converted.pdf"
         encoded_name = urllib.parse.quote(out_name)
 
         return send_file(
@@ -112,10 +96,6 @@ def convert():
 # =========================
 # SCAN ENHANCE
 # =========================
-def read_image(path):
-    pil_img = Image.open(path).convert("RGB")
-    img = np.array(pil_img)
-    return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
 @app.route("/scan", methods=["POST"])
 def scan_image():
@@ -125,23 +105,17 @@ def scan_image():
 
     file = request.files["file"]
 
-    # 元の拡張子を保持して保存
-    ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-
-        input_path  = os.path.join(tmpdir, "input" + ext)  # ★ 拡張子を維持
-        output_path = os.path.join(tmpdir, "output.jpg")
-        file.save(input_path)
-
+    # メモリ上で画像を開く（HEIC含むすべての形式に対応）
     try:
-        img = read_image(input_path)
+        file_bytes = file.read()
+        pil_img    = Image.open(BytesIO(file_bytes)).convert("RGB")
+        img        = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
     except Exception as e:
         return {"error": f"画像を読み込めませんでした: {e}"}, 400
 
-        # ★ imread 失敗チェック
-        if img is None:
-            return {"error": f"画像を読み込めませんでした（形式: {ext}）"}, 400
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        output_path = os.path.join(tmpdir, "output.jpg")
 
         gray     = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         denoised = cv2.fastNlMeansDenoising(gray, h=10)
@@ -167,3 +141,8 @@ def scan_image():
             as_attachment=True,
             download_name="scanned.jpg"
         )
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8765))
+    app.run(host="0.0.0.0", port=port)
