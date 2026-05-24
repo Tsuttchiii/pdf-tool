@@ -134,10 +134,10 @@ def scan_image():
         output_path = os.path.join(tmpdir, "output.jpg")
         file.save(input_path)
 
-        try:
-    img = read_image(input_path)
-except Exception as e:
-    return {"error": f"画像を読み込めませんでした: {e}"}, 400
+    try:
+        img = read_image(input_path)
+    except Exception as e:
+        return {"error": f"画像を読み込めませんでした: {e}"}, 400
 
         # ★ imread 失敗チェック
         if img is None:
