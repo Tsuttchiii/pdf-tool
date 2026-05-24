@@ -5,6 +5,7 @@ LibreOffice を使って .docx ファイルを PDF に変換します。
 
 from PIL import Image
 from pillow_heif import register_heif_opener
+register_heif_opener()
 
 import cv2
 import numpy as np
@@ -111,6 +112,11 @@ def convert():
 # =========================
 # SCAN ENHANCE
 # =========================
+def read_image(path):
+    pil_img = Image.open(path).convert("RGB")
+    img = np.array(pil_img)
+    return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
 @app.route("/scan", methods=["POST"])
 def scan_image():
 
@@ -128,7 +134,10 @@ def scan_image():
         output_path = os.path.join(tmpdir, "output.jpg")
         file.save(input_path)
 
-        img = cv2.imread(input_path)
+        try:
+    img = read_image(input_path)
+except Exception as e:
+    return {"error": f"画像を読み込めませんでした: {e}"}, 400
 
         # ★ imread 失敗チェック
         if img is None:
