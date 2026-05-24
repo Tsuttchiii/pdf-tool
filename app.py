@@ -122,45 +122,54 @@ def scan_image():
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
-        input_path = os.path.join(tmpdir, "input_image")
-        output_path = os.path.join(tmpdir, "scanned.jpg")
-
+        input_path  = os.path.join(tmpdir, "input.jpg")
+        output_path = os.path.join(tmpdir, "output.jpg")
         file.save(input_path)
 
-        try:
+        # ── ① 画像読み込み & グレースケール化 ──────────────────────────
+        img  = cv2.imread(input_path)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        #   BGR（カメラの色形式）→ グレー1チャンネルに変換
+        #   以降の処理は「明るさ」だけを扱う
 
-            # Pillowで画像読み込み（HEIC対応）
-            pil_img = Image.open(input_path).convert("RGB")
+        # ── ② ノイズ除去（★追加） ──────────────────────────────────────
+        denoised = cv2.fastNlMeansDenoising(gray, h=10)
+        #   h=10 : 除去の強さ。大きいほどぼかしが強い（5〜15 が目安）
+        #   これをやらないと細かいザラつきが二値化で「汚い点」になる
 
-            # Pillow → OpenCV形式
-            img = cv2.cvtColor(
-                np.array(pil_img),
-                cv2.COLOR_RGB2BGR
-            )
+        # ── ③ コントラスト均一化（★追加） ────────────────────────────
+        clahe    = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(denoised)
+        #   CLAHE = Contrast Limited Adaptive Histogram Equalization
+        #   画像全体ではなく 8×8 の小領域ごとにコントラストを強調
+        #   → 照明ムラがあっても「暗い隅」の文字も白黒くっきりになる
+        #   clipLimit=2.0 : 強調しすぎを防ぐ上限。大きいと強め
 
-        except Exception as e:
-            return {
-                "error": f"画像読み込み失敗: {str(e)}"
-            }, 400
-
-        # グレースケール化
-        gray = cv2.cvtColor(
-            img,
-            cv2.COLOR_BGR2GRAY
-        )
-
-        # 白黒くっきり化
+        # ── ④ 適応的二値化（パラメータ改善） ─────────────────────────
         th = cv2.adaptiveThreshold(
-            gray,
-            255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
-            11,
-            2
+            enhanced,
+            255,                              # 白の輝度値
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,   # 近傍をガウス重みで平均
+            cv2.THRESH_BINARY,                # 明るい→白 暗い→黒
+            blockSize=31,                     # ★ 11→31 に変更（重要）
+            C=15                              # ★ 2 →15 に変更
         )
+        #   blockSize : 「この画素を白か黒か」を決める近傍の大きさ
+        #               小さい(11)→細部に敏感→ノイズが出やすい
+        #               大きい(31)→大局的に判断→安定して白黒になる
+        #   C         : 閾値から引く定数。大きいほど白が増える
+        #               文字が飛ぶ場合は下げる、背景が残る場合は上げる
 
-        # 保存
-        cv2.imwrite(output_path, th)
+        # ── ⑤ モルフォロジー処理（★追加） ───────────────────────────
+        kernel  = np.ones((2, 2), np.uint8)
+        cleaned = cv2.morphologyEx(th, cv2.MORPH_CLOSE, kernel)
+        #   MORPH_CLOSE = 膨張 → 収縮 の順に適用
+        #   文字の小さな「穴」や途切れを埋めて、ゴマ塩ノイズを除去する
+        #   kernel(2×2) : 処理する近傍サイズ。大きくすると文字が太る
+
+        # ── ⑥ 保存 ──────────────────────────────────────────────────
+        cv2.imwrite(output_path, cleaned, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        #   品質 95 で保存（デフォルト 95 より高い → 圧縮劣化を抑える）
 
         return send_file(
             output_path,
@@ -168,17 +177,3 @@ def scan_image():
             as_attachment=True,
             download_name="scanned.jpg"
         )
-
-
-# =========================
-# 起動
-# =========================
-
-if __name__ == "__main__":
-
-    port = int(os.environ.get("PORT", 8765))
-
-    app.run(
-        host="0.0.0.0",
-        port=port
-    )
