@@ -836,8 +836,10 @@ scanBtn.addEventListener("click", async () => {
     });
 
     if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "不明なエラー" }));
-    throw new Error(err.error || "変換失敗");
+    const text = await res.text();
+    let msg = text;
+    try { msg = JSON.parse(text).error; } catch {}
+    throw new Error(msg.slice(0, 200));
 }
 
     const blob = await res.blob();
